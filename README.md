@@ -56,20 +56,19 @@ Training logs and learned embeddings are automatically saved to the `logs/` and 
 
 ## Repository Structure
 
-```
+```text
 .
-├── main.py            # Entry point (CLI arguments, dataset/GPU setup)
+├── main.py             # Entry point (CLI arguments, dataset/GPU setup)
 ├── SELFRec.py          # Loads data and dispatches to the selected model
-├── base/                # Base recommender / graph-recommender / torch interface classes
-├── data/                # Data loading and graph construction utilities
-├── model/graph/         # Model implementations (LightGCN, NGCF, SimGCL, NCL, and their _NT variants)
-├── util/                # Losses, samplers, evaluation, and misc. utilities
-├── dataset/              # Train/valid/test splits for LastFM, ML-1M, Yelp2018, Amazon-Book
-├── run.sh, run2.sh      # Example hyperparameter sweep scripts
-└── requirements.txt
+├── base/               # Base recommender, graph recommender, and PyTorch interface classes
+├── data/               # Data loading and graph construction utilities
+├── model/graph/        # Model implementations (LightGCN, SimGCL, NCL, and their _NT variants)
+├── util/               # Losses, samplers, evaluation, and miscellaneous utilities
+├── dataset/            # Train/validation/test splits for LastFM, ML-1M, Yelp2018, and Amazon-Book
+├── run.sh              # Example script
+└── requirements.txt    # Python dependencies
 ```
 
-This codebase builds on the [SELFRec](https://github.com/Coder-Yu/SELFRec) framework.
 
 ## Citation
 
