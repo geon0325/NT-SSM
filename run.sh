@@ -16,9 +16,9 @@ tau=0.2
 
 dataset=ml-1m
 
-alpha_uu=1.0
-alpha_ii=1.0
-alpha_ui=1.0
+alpha_uu=1.2
+alpha_ii=0.8
+alpha_ui=0.8
 alpha_iu=1.0
 
 python main.py \
@@ -33,7 +33,9 @@ python main.py \
     --learning_rate $learning_rate \
     --reg_lambda $reg_lambda \
     --n_layer $n_layer \
+    --alpha_uu $alpha_uu \
     --alpha_ii $alpha_ii \
+    --alpha_ui $alpha_ui \
     --alpha_iu $alpha_iu \
     --loss_type $loss_type \
     --tau $tau
