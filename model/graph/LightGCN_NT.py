@@ -32,15 +32,13 @@ class LightGCN_NT(GraphRecommender):
             self.config_name += f'_loss-bpr'
         elif self.loss_type == 'ssm':
             self.config_name += f'_loss-ssm_tau{self.tau}'
-        elif self.loss_type == 'directau':
-            self.config_name += f'_loss-directau'
 
         self.config_name += f'_seed{conf.seed}'
             
         print()
         print(self.config_name)
     
-        if os.path.exists(f'embs/{self.config_name}.pkl') or os.path.exists(f'/data/geon/PT-GCF/embs/{self.config_name}.pkl'):
+        if os.path.exists(f'embs/{self.config_name}.pkl'):
             print('Exists!')
             exit(0)
             
@@ -86,10 +84,6 @@ class LightGCN_NT(GraphRecommender):
                     loss_2 = self.ssm_loss(item_even_pos, item_odd_pos, pos_user_even, pos_user_odd, 
                                            self.alpha_uu, self.alpha_ui, self.tau)
                     loss = (loss_1 + loss_2) / 2
-                elif self.loss_type == 'directau':
-                    loss = self.direct_au_loss(pos_user_even, pos_user_odd, item_even_pos, item_odd_pos,
-                                               self.alpha_uu, self.alpha_ii, self.alpha_ui, self.alpha_iu)
-                
 
                 batch_loss = loss + l2_reg_loss(self.reg, model.embedding_dict['user_emb'][user_idx],model.embedding_dict['item_emb'][pos_idx],model.embedding_dict['item_emb'][neg_idx])/self.batch_size
             
@@ -99,6 +93,7 @@ class LightGCN_NT(GraphRecommender):
                 optimizer.step()
                 if n % 100==0 and n>0:
                     print('training:', epoch + 1, 'batch', n, 'batch_loss:', batch_loss.item())
+            
             with torch.no_grad():
                 user_even_rec, user_odd_rec, item_even_rec, item_odd_rec = model()
                 self.user_emb, self.item_emb = user_even_rec + user_odd_rec, item_even_rec + item_odd_rec
@@ -144,7 +139,7 @@ class LightGCN_NT(GraphRecommender):
         self.user_emb = self.best_user_emb.detach().cpu()
         self.item_emb = self.best_item_emb.detach().cpu()
         
-        with open(f'/data/geon/PT-GCF/embs/{self.config_name}.pkl', 'wb') as f:
+        with open(f'embs/{self.config_name}.pkl', 'wb') as f:
             pkl.dump([self.user_emb, self.item_emb], f)
 
     def bpr_loss(self, user_even, user_odd, item_even_pos, item_odd_pos, item_even_neg, item_odd_neg,
@@ -216,31 +211,6 @@ class LightGCN_NT(GraphRecommender):
             torch.diag(logits) - torch.logsumexp(logits, dim=1)
         )
         return loss
-
-
-    def alignment(self, x, y):
-        x, y = F.normalize(x, dim=-1), F.normalize(y, dim=-1)
-        return (x - y).norm(p=2, dim=1).pow(2).mean()
-
-    def uniformity(self, x, alpha=1.0, t=2):
-        x = F.normalize(x, dim=-1)
-        return torch.pdist(x, p=2).pow(2).mul((-t) * alpha).exp().mean().log()
-
-    def direct_au_loss(self, 
-                       user_even, user_odd, item_even, item_odd, 
-                       alpha_uu, alpha_ii, alpha_ui, alpha_iu):
-        user_emb = user_even + user_odd
-        item_emb = item_even + item_odd
-        
-        align = self.alignment(user_emb, item_emb)
-        
-        uniform_uu = (self.uniformity(user_even, alpha_uu) + self.uniformity(item_odd, alpha_uu)) / 2
-        uniform_ii = (self.uniformity(user_odd, alpha_ii) + self.uniformity(item_even, alpha_ii)) / 2
-        uniform_ui = (self.uniformity(user_even, alpha_ui) + self.uniformity(item_even, alpha_ui)) / 2
-        uniform_iu = (self.uniformity(user_odd, alpha_iu) + self.uniformity(item_odd, alpha_iu)) / 2
-        uniform = uniform_uu + uniform_ii + uniform_ui + uniform_iu
-        return align + uniform
-
 
     def save(self):
         with torch.no_grad():

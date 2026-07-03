@@ -27,15 +27,13 @@ class LightGCN(GraphRecommender):
             self.config_name += f'_loss-bpr'
         elif self.loss_type == 'ssm':
             self.config_name += f'_loss-ssm_tau{self.tau}'
-        elif self.loss_type == 'directau':
-            self.config_name += f'_loss-directau_gamma{self.gamma}'
-
+            
         self.config_name += f'_seed{conf.seed}'
             
         print()
         print(self.config_name)
 
-        if os.path.exists(f'embs/{self.config_name}.pkl') or os.path.exists(f'/data/geon/PT-GCF/embs/{self.config_name}.pkl'):
+        if os.path.exists(f'embs/{self.config_name}.pkl'):
             print('Exists!')
             exit(0)
     
@@ -56,11 +54,7 @@ class LightGCN(GraphRecommender):
                     loss = self.bpr_loss(user_emb, pos_item_emb, neg_item_emb)
                 elif self.loss_type == 'ssm':
                     loss = self.ssm_loss(user_emb, pos_item_emb, self.tau)
-                    #loss_temp = self.ssm_loss_v2(user_emb, pos_item_emb, self.tau)
-                    #print(loss.item(), loss_temp.item())
-                elif self.loss_type == 'directau':
-                    loss = self.direct_au_loss(user_emb, pos_item_emb, self.gamma)
-
+                    
                 reg_loss = l2_reg_loss(self.reg, model.embedding_dict['user_emb'][user_idx],model.embedding_dict['item_emb'][pos_idx],model.embedding_dict['item_emb'][neg_idx])/self.batch_size
                 
                 batch_loss = loss + reg_loss
@@ -114,7 +108,7 @@ class LightGCN(GraphRecommender):
         self.user_emb = self.best_user_emb.detach().cpu()
         self.item_emb = self.best_item_emb.detach().cpu()
 
-        with open(f'/data/geon/PT-GCF/embs/{self.config_name}.pkl', 'wb') as f:
+        with open(f'embs/{self.config_name}.pkl', 'wb') as f:
             pkl.dump([self.user_emb, self.item_emb], f)
 
     def bpr_loss(self, user, item_pos, item_neg):
@@ -122,19 +116,6 @@ class LightGCN(GraphRecommender):
         neg = torch.mul(user, item_neg).sum(dim=1)
         loss = -torch.log(10e-6 + torch.sigmoid(pos - neg))
         return torch.mean(loss)
-
-    def alignment(self,x, y):
-        x, y = F.normalize(x, dim=-1), F.normalize(y, dim=-1)
-        return (x - y).norm(p=2, dim=1).pow(2).mean()
-
-    def uniformity(self,x, t=2):
-        x = F.normalize(x, dim=-1)
-        return torch.pdist(x, p=2).pow(2).mul(-t).exp().mean().log()
-
-    def direct_au_loss(self, user_emb, item_emb, gamma):
-        align = self.alignment(user_emb, item_emb)
-        uniform = gamma * (self.uniformity(user_emb) + self.uniformity(item_emb)) / 2
-        return align + uniform
 
     def ssm_loss(self, user_emb, pos_item_emb, tau=0.2):
         u_emb = F.normalize(user_emb, dim = -1)
@@ -147,25 +128,6 @@ class LightGCN(GraphRecommender):
         denominator = torch.exp(ratings / tau).sum(dim=-1)
         loss_r = torch.mean(-torch.log(numerator/denominator))
         return loss_r
-
-    def ssm_loss_v2(self,
-        user_emb, item_emb, tau=0.2
-    ):
-        user_emb = F.normalize(user_emb, dim = -1)
-        item_emb = F.normalize(item_emb, dim = -1)
-        
-        B = user_emb.size(0)
-    
-        ratings = torch.matmul(user_emb.unsqueeze(1), item_emb.T).squeeze(dim=1) # BXB
-        pos_ratings = torch.diag(ratings)
-        
-        logits = ratings / tau
-        logits = logits - logits.max(dim=1, keepdim=True)[0]
-        
-        loss = -torch.mean(
-            torch.diag(logits) - torch.logsumexp(logits, dim=1)
-        )
-        return loss
         
     def save(self):
         with torch.no_grad():

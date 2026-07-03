@@ -38,15 +38,13 @@ class NCL(GraphRecommender):
             self.config_name += f'_loss-bpr'
         elif self.loss_type == 'ssm':
             self.config_name += f'_loss-ssm_tau{self.tau}'
-        elif self.loss_type == 'directau':
-            self.config_name += f'_loss-directau_gamma{self.gamma}'
 
         self.config_name += f'_seed{conf.seed}'
         
         print()
         print(self.config_name)
 
-        if os.path.exists(f'embs/{self.config_name}.pkl') or os.path.exists(f'/data/geon/PT-GCF/embs/{self.config_name}.pkl'):
+        if os.path.exists(f'embs/{self.config_name}.pkl'):
             print('Exists!')
             exit(0)
 
@@ -197,7 +195,7 @@ class NCL(GraphRecommender):
         self.user_emb = self.best_user_emb.detach().cpu()
         self.item_emb = self.best_item_emb.detach().cpu()
         
-        with open(f'/data/geon/PT-GCF/embs/{self.config_name}.pkl', 'wb') as f:
+        with open(f'embs/{self.config_name}.pkl', 'wb') as f:
             pkl.dump([self.user_emb, self.item_emb], f)
 
     def bpr_loss(self, user, item_pos, item_neg):
@@ -205,19 +203,6 @@ class NCL(GraphRecommender):
         neg = torch.mul(user, item_neg).sum(dim=1)
         loss = -torch.log(10e-6 + torch.sigmoid(pos - neg))
         return torch.mean(loss)
-
-    def alignment(self,x, y):
-        x, y = F.normalize(x, dim=-1), F.normalize(y, dim=-1)
-        return (x - y).norm(p=2, dim=1).pow(2).mean()
-
-    def uniformity(self,x, t=2):
-        x = F.normalize(x, dim=-1)
-        return torch.pdist(x, p=2).pow(2).mul(-t).exp().mean().log()
-
-    def direct_au_loss(self, user_emb, item_emb, gamma):
-        align = self.alignment(user_emb, item_emb)
-        uniform = gamma * (self.uniformity(user_emb) + self.uniformity(item_emb)) / 2
-        return align + uniform
 
     def ssm_loss(self, user_emb, pos_item_emb, tau=0.2):
         u_emb = F.normalize(user_emb, dim = -1)
