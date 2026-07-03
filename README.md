@@ -85,7 +85,10 @@ If you find this work useful, please consider citing our paper:
   year      = {2026}
 }
 ```
+<<<<<<< HEAD
 
 ## Acknowledgement
 
 This code is implemented based on [https://github.com/Coder-Yu/SELFRec](SELFRec).
+=======
+>>>>>>> 6a04e22eb8a5cc5d9c18cbafa92fd4e3812a871f
